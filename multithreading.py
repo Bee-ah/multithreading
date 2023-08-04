@@ -3,6 +3,7 @@ import time
 import csv
 import random
 import concurrent.futures
+import multiprocessing
 
 
 from bs4 import BeautifulSoup
@@ -22,7 +23,7 @@ def extract_movie_details(movie_link):
             title = None
             date = None
 
-            movie_data = movie_soup.find('div', attrs={'class': 'sc-acac9414-0 jFcAtv'})#mudei pois não encontrei o original
+            movie_data = movie_soup.find('div', attrs={'class': 'sc-acac9414-0 jFcAtv'})
             if movie_data is not None:
                 title = movie_data.find('h1').get_text()
                 date = movie_data.find('a', attrs={'class': 'ipc-link ipc-link--baseAlt ipc-link--inherit-color'}).get_text().strip()
@@ -33,39 +34,36 @@ def extract_movie_details(movie_link):
             plot_text = movie_soup.find('span', attrs={'class': 'sc-466bb6c-0 kJJttH'}).get_text().strip() if movie_soup.find(
             'span', attrs={'class': 'sc-466bb6c-0 kJJttH'}) else None
 
-            with open('movies2.csv', mode='a') as file:
+            with open('movies3.csv', mode='a') as file:
                 movie_writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 if all([title, date, rating, plot_text]):
                     print(title, date, rating, plot_text)
                     movie_writer.writerow([title, date, rating, plot_text])
-
-
-
-
     except Exception as e:
         print(f"Error while processing movie link {movie_link}: {e}")
-    
-
-   
-
+       
+#using multithreads
 def extract_movies(soup):
     
-    movies_table = soup.find('div', attrs={'data-testid': 'chart-layout-main-column'}).find('ul')#certo
-    
-    movies_table_div = soup.find('div', attrs={'data-testid': 'chart-layout-main-column'})
-    if movies_table_div is not None:
-        movies_table = movies_table_div.find('ul')
-    else:
-        print('A div com o atributo data-testid igual a chart-layout-main-column não foi encontrada')
-
-
-
-    movies_table_rows = movies_table.find_all('li')#certo
+    movies_table = soup.find('div', attrs={'data-testid': 'chart-layout-main-column'}).find('ul')
+    movies_table_rows = movies_table.find_all('li')
     movie_links = ['https://imdb.com' + movie.find('a')['href'] for movie in movies_table_rows]
 
     threads = min(MAX_THREADS, len(movie_links))
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(extract_movie_details, movie_links)
+
+#using multiprocessing
+"""
+def extract_movies(soup):
+    
+    movies_table = soup.find('div', attrs={'data-testid': 'chart-layout-main-column'}).find('ul')
+    movies_table_rows = movies_table.find_all('li')
+    movie_links = ['https://imdb.com' + movie.find('a')['href'] for movie in movies_table_rows]
+
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as executor:
+        executor.map(extract_movie_details, movie_links)
+"""
 
 
 def main():
